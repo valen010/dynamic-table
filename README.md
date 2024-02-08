@@ -17,6 +17,6 @@ built with blazor(WebAssembly ASP.Net Core(5.0) hosted)
 for this; right click project solution->properties->Multiple startup projects->select start option for application.client and application.server. in this case dont forget to change the port number(Baseurl) in Application.Client/program.cs to the application.server's port number
 
 ###
-![grab-landing-page](https://github.com/Emel212/Application/blob/master/Screenshots/arrange-cols.gif)
+![grab-landing-page](https://github.com/valen010/Application/blob/master/Screenshots/arrange-cols.gif)
 
-![grab-landing-page](https://github.com/Emel212/Application/blob/master/Screenshots/arrange-records.gif)
+![grab-landing-page](https://github.com/valen010/Application/blob/master/Screenshots/arrange-records.gif)
