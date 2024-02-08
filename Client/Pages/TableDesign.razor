@@ -1,0 +1,381 @@
+﻿@page "/"
+@using System.Data;
+@using System.Net.Http.Json
+@using System.Text.Json
+@inject HttpClient Http
+@using Entities.Models;
+
+
+<div id="table" class="row">
+    <div class="col-md-12">
+       <div class="container">
+            <button  onclick="document.getElementById('form').scrollIntoView({behavior:'smooth'})" @onfocus="()=>New()" class="btn btn-info m-1 p-1">New</button>
+             <table class="table">
+                <thead>
+                    <tr>
+                        <th>Commands</th>
+
+                        <th>ID</th>
+                        @foreach (var item in columns)
+                        {
+                                <th scope="col">@item.Name</th>
+                        }
+                    </tr>
+                </thead>             
+                        <tbody>
+                   
+                    @{
+                        var columnValues = new Dictionary<int, List<string>>();
+                       
+                        foreach (var value in tableview.Select(x => x._values).Where(val => columns.Any(col => col.Id == val.ColumnId)).ToList())
+                        {
+                                    if (columnValues.ContainsKey(value.ColumnId))
+                                    {
+                                        columnValues[value.ColumnId].Add(value.Value1);
+                                    }
+                                    else
+                                    {
+                                        columnValues.Add(value.ColumnId, new List<string> { value.Value1 });
+                                    }
+                        }
+                     }
+                      @for (int i = 0; i <= tableview.Select(x => x._values).Count(); i++)
+                    {
+                        int colindex = i;
+                        <tr>     
+                                  
+                               @if(number_of_vertical_records.Count()>i)
+                               {
+                                        int _index = i;
+                                        int uniqueId = tableview[_index]._values.Id + 5;
+                                        <td class=" row btn-group-sm">
+                                        <td onclick="document.getElementById('form').scrollIntoView({behavior:'smooth'})" class="row btn-group-sm"> <a @onclick="()=>isUpdate(number_of_vertical_records[_index])" class=" btn btn-outline-info">Update</a></td>
+                                        <td class="m-0 row btn-group-sm"><a @onclick="()=>DeleteValue(number_of_vertical_records[_index])" class=" btn btn-outline-danger">Delete</a></td>
+                                        </td>
+                                        <td >@uniqueId</td>
+                               }
+                               else
+                               {
+                                         <td class="row" hidden><a class="btn btn-outline-info">Update</a> <a class="btn btn-outline-primary">Delete</a></td>
+                               }
+                                    @foreach (var column in columns)
+                                    {
+                                             
+                                        if (columnValues.ContainsKey(column.Id) && columnValues[column.Id].Count > colindex)
+                                        {
+                                  
+                                            <td>@columnValues[column.Id][colindex]</td> 
+                                        }
+                                        else
+                                        {
+                                            <td hidden>N/A</td>
+                                        }
+                                    }
+                             </tr>
+                        }
+                  </tbody>
+             </table>
+        </div>
+    </div>
+</div>
+<!-- Arrange Columns -->
+<div class="row m-0 p-0">
+    <div class="col-md-12">
+       
+        <div class="container">
+            <h4 class="text-info  card-header">Table Design</h4>
+            <ul class="list-group">
+
+                @for (int i = 0; i < allColumns.Count; i++)
+                {
+                    int _index = i;
+                    
+
+                        <li class="list-group-horizontal">
+                            <button class="btn btn-outline-danger m-1 p-1" @onclick="()=>DeleteColumn(allColumns[_index].Id)">Delete</button>
+
+                            <input placeholder="@allColumns[_index].Name" id="@allColumns[_index].Id" type="text" @bind="_value" @onkeydown="UpdateColumn" @onclick="()=>GetId(allColumns[_index].Id)" />
+                        @if (allColumns[_index].IsVisible == true)
+                        {
+                                    <input type="checkbox" checked="checked" @onclick="()=>GetId(allColumns[_index].Id)" class="m-1 p-1" @onchange="Hide" /> <label>Visible</label>
+
+                        }
+                        @if (allColumns[_index].IsVisible == false)
+                        {
+                                    <input type="checkbox" @onclick="()=>GetId(allColumns[_index].Id)" class="m-1 p-1" @onchange="Hide" /> <label>Visible</label>
+
+                        }
+                        @if (_index != 0)
+                        {
+                                    <button class="btn btn-outline-info p-1 m-1" @onclick='()=>ChangeColumnOrder(allColumns[_index-1].Order,allColumns[_index].Id)'>Up</button>
+                        }
+                        @if (_index != allColumns.Count - 1)
+                        {
+                                    <button class="btn btn-outline-info p-1 m-1" @onclick='()=>ChangeColumnOrder(allColumns[_index+1].Order,allColumns[_index].Id)'>Down</button>
+                        }
+                        </li>
+                }
+
+            </ul>
+
+        <label class="col-form-label m-1 p-1">Column Name :</label>
+        <input type="text" @bind="columnName" placeholder="New Column" />
+            <button @onclick="AddNewColumn" class="btn btn-danger m-1 p-1">Add</button>
+        </div>
+    </div>
+</div>
+<!-- Form/ Add Value -->
+<div class="row m-0 p-0">
+    <div class="col-md-12">
+       
+        <div class="container">   
+            <h4 class="text-info card-header">Form View</h4>
+              <form id="form" method="post" @onsubmit="HandleValidSubmit" >
+       
+                @for (int i=0;i<columns.Count;i++)
+                {
+                    int index = i;
+                    @if(_updateClicked)
+                    {
+                       <label class="col-form-label" for="Name">@columns[i].Name</label>
+                      <input value="@values_to_update[index]"  class="input-group-text" type="text" name="Value1" @onchange="()=>SaveAll(columns[index].Id)" @oninput="OnInputEvent" />
+                    }
+                    else 
+                    {
+                         <label class="col-form-label" for="Name">@columns[i].Name</label>
+                         <input  class="input-group-text" type="text" name="Value1" @onchange="()=>SaveAll(columns[index].Id)" @oninput="OnInputEvent" />
+                
+                    }
+                }
+        <button class="btn btn-outline-danger m-2 align-self-center" type="submit" value="submit" onclick="document.getElementById('table').scrollIntoView({behavior:'smooth'})">Save</button>
+    </form>
+
+           </div>
+    </div>
+</div>
+
+<!-- Log listing -->
+<div class="row m-0 p-0">
+    <div class="col-md-12">
+
+        <div class="container ">
+            <h4 class="text-info card-header">System Logs</h4>
+            <ul class="list-group">
+                
+                @foreach (var item in Logs)
+                {
+                    <li>@item</li>
+                }
+            </ul>
+
+        </div>
+    </div>
+</div>
+
+
+
+
+
+@code {
+    private bool isChecked = false;
+    private string columnName;
+    private int id;
+    private string _value { get; set; }
+    string recordId ="";
+    private string inputValue;
+    public Value val = new Value();
+    private int colId;
+    // private ElementReference formRef;
+    string recordID;
+    private bool _updateClicked;
+    List<Column> columns = new List<Column>();
+    List<Column> allColumns = new List<Column>();
+    List<string> Logs = new List<string>();
+    List<TableView> tableview = new List<TableView>();
+    List<Value> inputValues = new List<Value>();
+    List<string> number_of_vertical_records = new List<string>();
+    List<string> values_to_update = new List<string>();
+
+    private void isUpdate(string recordId)
+    {
+        recordID = recordId;
+        values_to_update=tableview.Where(x => x._values.RecordId == recordId).Select(x => x._values.Value1).ToList();
+        _updateClicked=true;
+    }
+
+    protected void GetColId(int value)
+    {
+        colId = value;
+
+    }
+
+    protected void GetId(int value)
+    {
+        id = value;
+    }
+
+    protected async void New()
+    {
+        await OnInitializedAsync();
+        await InvokeAsync(StateHasChanged);
+        _updateClicked = false;
+        inputValues.Clear();
+    }
+
+    protected void SaveAll(int value)
+    {
+        Value val = new Value();
+        colId = value;
+
+        if(inputValue.Length>0&&inputValues.Where(x=>x.Value1==inputValue).Count()==0)
+        {
+            val.Value1 = inputValue;
+            val.ColumnId = colId;
+            if(_updateClicked==true)
+            {
+                var _id = tableview.Where(x => x._values.ColumnId == colId && x._values.RecordId == recordID).First()._values.Id;
+                val.Id = _id;
+            }
+          
+            inputValues.Add(val);
+        }
+
+
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        columns = await Http.GetFromJsonAsync<List<Column>>("/api/Column/GetAllColumns");
+        allColumns = await Http.GetFromJsonAsync<List<Column>>("/api/Column/GetAll");
+        Logs = await Http.GetFromJsonAsync<List<string>>("api/SystemLog/GetAllLogs");
+        tableview = await Http.GetFromJsonAsync<List<TableView>>("api/Column/TableView");
+        int takelast = tableview.Select(x => x._values.ColumnId).First();
+        number_of_vertical_records = tableview.Where(x => x._values.ColumnId == takelast).Select(x=>x._values.RecordId.ToString()).ToList();
+        _updateClicked = false;
+        inputValues.Clear();
+       
+    }
+
+    private void OnInputEvent(ChangeEventArgs changeEvent)
+    {
+        inputValue = (string)changeEvent.Value;
+    }
+
+    private async void HandleValidSubmit()
+    { 
+        recordId = Guid.NewGuid().ToString();
+       
+        if(_updateClicked)
+        {
+            @for (int i = 0; i <inputValues.Count ; i++)
+            {
+                int inx = i;
+                var oldRecord = await Http.GetFromJsonAsync<List<Value>>("/api/Value/GetAll");
+                Value Values = new Value { RecordId =recordID, Value1 = inputValues[inx].Value1, ColumnId = inputValues[inx].ColumnId };
+                var response = await Http.PutAsJsonAsync($"/api/Value/Update/{inputValues[inx].Id}", Values);
+            }
+            await OnInitializedAsync();
+        }
+
+        else
+        {
+            foreach (var item in inputValues)
+            {
+                Value Values = new Value { RecordId = recordId, Value1 = item.Value1, ColumnId = item.ColumnId };
+                var response = await Http.PostAsJsonAsync<Value>("/api/Value/AddValue", Values);
+                response.StatusCode.ToString();
+            }
+
+        }
+        await InvokeAsync(StateHasChanged);
+        New();
+
+    }
+
+    private async Task AddNewColumn()
+    {
+        int? order = 0;
+        var setOrderNumber = await Http.GetFromJsonAsync<List<Column>>("/api/Column/GetAllColumns");
+        if (setOrderNumber.Count < 1)
+        {
+            order = 1;
+        }
+        else if (setOrderNumber.Count > 0)
+        {
+            var query = setOrderNumber.OrderByDescending(x => x.Order).FirstOrDefault();
+            order = query.Order + 1;
+        }
+        Column column = new Column { Name = columnName, IsVisible = true, Order = order };
+        var response = await Http.PostAsJsonAsync<Column>("/api/Column/AddColumn", column);
+        response.StatusCode.ToString();
+
+        await OnInitializedAsync();
+    }
+
+
+                        
+    private async Task DeleteColumn(int Id)
+    {
+        var response = await Http.DeleteAsync("/api/Column/Delete/" + Id);
+        response.StatusCode.ToString();
+
+        await OnInitializedAsync();
+    }
+
+    private async Task UpdateColumn(KeyboardEventArgs e)
+    {
+        if (e.Code == "Enter")
+        {
+            var oldRecord = await Http.GetFromJsonAsync<List<Column>>("/api/Column/GetAll");
+            var list = oldRecord.FirstOrDefault(x => x.Id == id);
+
+            Column col = new Column { Name = _value, IsVisible = list.IsVisible, Order = list.Order };
+            var response = await Http.PutAsJsonAsync($"/api/Column/UpdateColumns/{id}", col);
+            await OnInitializedAsync();
+        }
+    }
+
+    private async Task Hide(ChangeEventArgs e)
+    {
+        isChecked = Convert.ToBoolean(e.Value);
+        var get = await Http.GetFromJsonAsync<List<Column>>("/api/Column/GetAll");
+        var oldRecord = get.FirstOrDefault(x => x.Id == id);
+
+        Column column = new Column { IsVisible = isChecked, Order = oldRecord.Order, Name = oldRecord.Name };
+
+        var result = await Http.PutAsJsonAsync<Column>($"/api/Column/UpdateRecord/{id}", column);
+        var repsonse = result.StatusCode.ToString();
+        await OnInitializedAsync();
+    }
+
+
+    private async Task ChangeColumnOrder(int? order, int id)
+    {
+        var list = await Http.GetFromJsonAsync<List<Column>>("/api/Column/GetAllColumns");
+        var col1 = list.FirstOrDefault(x => x.Id == id);
+        var col2 = list.FirstOrDefault(x => x.Order == order);
+
+        Column column1 = new Column { Name = col1.Name, Order = col2.Order, IsVisible = col1.IsVisible };
+        Column column2 = new Column { Name = col2.Name, Order = col1.Order, IsVisible = col2.IsVisible };
+
+
+        var response2 = await Http.PutAsJsonAsync($"/api/Column/UpdateColumns/{col1.Id}", column1);
+
+        var response = await Http.PutAsJsonAsync($"/api/Column/UpdateColumns/{col2.Id}", column2);
+        response.StatusCode.ToString();
+        response2.StatusCode.ToString();
+
+        await OnInitializedAsync();
+    }
+
+    private async Task DeleteValue(string recordId)
+    {
+        var record = tableview.Where(x => x._values.RecordId == recordId).Select(x => x._values.Id).ToList();
+        foreach (var item in record)
+        {
+            var response = await Http.DeleteAsync("/api/Value/Delete/" + item);
+             response.StatusCode.ToString();
+        }
+        await OnInitializedAsync();
+    }
+}
